@@ -2,7 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 function StoreView() {
-  const { id: storeId } = useParams(); // Get store ID from URL
+  const { id: storeId } = useParams();
   const [store, setStore] = useState(null);
   const [shelves, setShelves] = useState([]);
 
@@ -10,7 +10,7 @@ function StoreView() {
     // Mock store data
     const storeData = {
       id: storeId,
-      name: "Walmart " + storeId.slice(-3),
+      name: "Walmart " + storeId?.slice(-3),
     };
 
     // Mock shelves
@@ -24,10 +24,16 @@ function StoreView() {
     setShelves(shelfList);
   }, [storeId]);
 
-  if (!store) return <p>Loading store data...</p>;
+  if (!store) {
+    return (
+      <div className="p-6">
+        <p className="text-center text-gray-500">Loading store data...</p>
+      </div>
+    );
+  }
 
   return (
-    <div>
+    <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">{store.name}</h1>
       <p className="mb-6 text-gray-600">Store ID: {store.id}</p>
 

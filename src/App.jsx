@@ -1,88 +1,86 @@
 // src/App.jsx
 import React from 'react';
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginForm from './components/LoginForm';
+import Layout from './components/Layout';
+import Dashboard from './pages/Dashboard';
+import Alerts from './pages/Alerts';
+import ManageWorkers from './pages/ManageWorkers';
+import ShelfView from './pages/ShelfView';
+import StoreView from './pages/StoreView';
+import Upload from './pages/Upload';
 import './App.css';
 
-// Protected Route component
-function ProtectedRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '50px' }}>
-        <p>Loading...</p>
-      </div>
-    );
-  }
-  
-  return isAuthenticated() ? children : <Navigate to="/" replace />;
+function ProtectedRoute({ children, role }) {
+  const { isAuthenticated, user, loading } = useAuth();
+
+  if (loading) return <div>Loading...</div>;
+
+  if (!isAuthenticated()) return <Navigate to="/" replace />;
+
+  if (role && user.role?.toUpperCase() !== role) return <Navigate to="/" replace />;
+
+  return children;
 }
 
-// Login Page component
 function LoginPage() {
-  const { isAuthenticated } = useAuth();
-  
-  // If already logged in, redirect to dashboard
-  if (isAuthenticated()) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  return <LoginForm />;
-}
+  const { isAuthenticated, user } = useAuth();
 
-function TemporaryDashboard() {
-  const { user, logout } = useAuth();
-  
-  return (
-    <div style={{ textAlign: 'center', padding: '50px' }}>
-      <h1>📊 Welcome to ShelfCam Dashboard</h1>
-      <div style={{ marginBottom: '20px' }}>
-        <p>✅ Successfully logged in!</p>
-        <p><strong>User:</strong> {user?.username}</p>
-        <p><strong>Role:</strong> {user?.role}</p>
-        <p><strong>Employee ID:</strong> {user?.employee_id}</p>
-      </div>
-      <button 
-        onClick={logout}
-        style={{
-          padding: '10px 20px',
-          backgroundColor: '#dc3545',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer'
-        }}
-      >
-        Logout
-      </button>
-    </div>
-  );
+  if (isAuthenticated()) {
+    const role = user.role?.toUpperCase();
+    if (role === 'ADMIN') return <Navigate to="/admin/dashboard" replace />;
+    if (role === 'MANAGER') return <Navigate to="/manager/dashboard" replace />;
+    if (role === 'STAFF') return <Navigate to="/staff/shelf" replace />;
+  }
+  return <LoginForm />;
 }
 
 function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* Public Route */}
         <Route path="/" element={<LoginPage />} />
-        
-        {/* Protected routes */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <TemporaryDashboard />
+
+        {/* ADMIN ROUTES */}
+        <Route path="/admin/*" element={
+          <ProtectedRoute role="ADMIN">
+            <Layout>
+              <Routes>
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="alerts" element={<Alerts />} />
+                <Route path="upload" element={<Upload />} />
+                <Route path="store/:id" element={<StoreView />} />
+              </Routes>
+            </Layout>
           </ProtectedRoute>
         } />
-        
-        {/* Catch all route */}
-        <Route path="*" element={
-          <div style={{ textAlign: 'center', padding: '50px' }}>
-            <h1>🚧 Page Under Construction</h1>
-            <p>This page will be built soon!</p>
-            <a href="/">← Go back to Login</a>
-          </div>
+
+        {/* MANAGER ROUTES */}
+        <Route path="/manager/*" element={
+          <ProtectedRoute role="MANAGER">
+            <Layout>
+              <Routes>
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="alerts" element={<Alerts />} />
+                <Route path="manage-workers" element={<ManageWorkers />} />
+              </Routes>
+            </Layout>
+          </ProtectedRoute>
         } />
+
+        {/* STAFF ROUTES */}
+        <Route path="/staff/*" element={
+          <ProtectedRoute role="STAFF">
+            <Layout>
+              <Routes>
+                <Route path="shelf" element={<ShelfView />} />
+              </Routes>
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>
   );

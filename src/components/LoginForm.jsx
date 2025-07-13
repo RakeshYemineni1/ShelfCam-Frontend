@@ -1,18 +1,17 @@
-// src/components/LoginForm.jsx
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { USER_ROLES } from '../types';
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({
     username: '',
-    password: '',
-    role: USER_ROLES.STAFF
+    password: ''
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
   const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -20,7 +19,6 @@ const LoginForm = () => {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
     if (error) setError('');
   };
 
@@ -29,7 +27,6 @@ const LoginForm = () => {
     setError('');
     setIsLoading(true);
 
-    // Basic validation
     if (!formData.username || !formData.password) {
       setError('Please fill in all fields');
       setIsLoading(false);
@@ -37,11 +34,11 @@ const LoginForm = () => {
     }
 
     try {
-      const result = await login(formData);
-      
+      const { username, password } = formData;
+      const result = await login({ username, password });
+
       if (result.success) {
-        // Redirect will be handled by the routing system
-        console.log('Login successful!');
+        navigate('/dashboard');
       } else {
         setError(result.error || 'Login failed');
       }
@@ -88,20 +85,6 @@ const LoginForm = () => {
             />
           </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Role</label>
-            <select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              style={styles.select}
-            >
-              <option value={USER_ROLES.STAFF}>Staff</option>
-              <option value={USER_ROLES.MANAGER}>Manager</option>
-              <option value={USER_ROLES.ADMIN}>Admin</option>
-            </select>
-          </div>
-
           {error && (
             <div style={styles.error}>
               ❌ {error}
@@ -130,7 +113,6 @@ const LoginForm = () => {
   );
 };
 
-// Inline styles for the component
 const styles = {
   container: {
     minHeight: '100vh',
@@ -184,15 +166,6 @@ const styles = {
     fontSize: '16px',
     outline: 'none',
     transition: 'border-color 0.3s'
-  },
-  select: {
-    padding: '12px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    fontSize: '16px',
-    outline: 'none',
-    backgroundColor: 'white',
-    cursor: 'pointer'
   },
   button: {
     padding: '12px',

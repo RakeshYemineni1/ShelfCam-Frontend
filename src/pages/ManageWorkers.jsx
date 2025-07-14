@@ -1,91 +1,52 @@
 import { useEffect, useState } from "react";
+import { staffAssignmentAPI } from "../services/api";
 
 function ManageWorkers() {
-  const storeId = localStorage.getItem("storeId");
-  const [workers, setWorkers] = useState([]);
-  const [newWorkerId, setNewWorkerId] = useState("");
-  const [newShelfId, setNewShelfId] = useState("");
+    const [assignments, setAssignments] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [shelfId, setShelfId] = useState("");
 
-  useEffect(() => {
-    // Load existing workers from localStorage or mock data
-    const stored = JSON.parse(localStorage.getItem("workers")) || [
-      { id: "W0001", storeId: "Store123", shelfId: "ShelfA1" },
-      { id: "W0002", storeId: "Store123", shelfId: "ShelfA2" },
-    ];
+    useEffect(() => {
+        async function fetchAssignments() {
+            const res = await staffAssignmentAPI.getCurrentAssignments();
+            if (res.success) setAssignments(res.data);
+            setLoading(false);
+        }
+        fetchAssignments();
+    }, []);
 
-    const filtered = stored.filter((worker) => worker.storeId === storeId);
-    setWorkers(filtered);
-  }, [storeId]);
+    async function handleUnassign(employeeId) {
+        await staffAssignmentAPI.unassignStaff(employeeId);
+        const res = await staffAssignmentAPI.getCurrentAssignments();
+        if (res.success) setAssignments(res.data);
+    }
 
-  const assignWorker = () => {
-    if (!newWorkerId || !newShelfId) return alert("Enter both fields.");
+    async function handleAssign(employeeId) {
+        await staffAssignmentAPI.assignStaff(employeeId, shelfId);
+        const res = await staffAssignmentAPI.getCurrentAssignments();
+        if (res.success) setAssignments(res.data);
+    }
 
-    const updated = [...workers, { id: newWorkerId, storeId, shelfId: newShelfId }];
-    setWorkers(updated);
-    localStorage.setItem("workers", JSON.stringify(updated));
-    setNewWorkerId("");
-    setNewShelfId("");
-  };
+    if (loading) return <p>Loading...</p>;
 
-  const removeWorker = (idToRemove) => {
-    const updated = workers.filter((worker) => worker.id !== idToRemove);
-    setWorkers(updated);
-    localStorage.setItem("workers", JSON.stringify(updated));
-  };
-
-  return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Manage Workers</h1>
-
-      <div className="bg-white p-4 rounded shadow mb-6">
-        <h2 className="text-lg font-semibold mb-2">Assign New Worker</h2>
-        <input
-          type="text"
-          placeholder="Worker ID"
-          value={newWorkerId}
-          onChange={(e) => setNewWorkerId(e.target.value)}
-          className="border p-2 mr-2 rounded"
-        />
-        <input
-          type="text"
-          placeholder="Shelf ID"
-          value={newShelfId}
-          onChange={(e) => setNewShelfId(e.target.value)}
-          className="border p-2 mr-2 rounded"
-        />
-        <button
-          onClick={assignWorker}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Assign
-        </button>
-      </div>
-
-      <h2 className="text-lg font-semibold mb-2">Current Workers</h2>
-      {workers.length === 0 ? (
-        <p>No workers assigned to this store.</p>
-      ) : (
-        <ul className="space-y-2">
-          {workers.map((worker) => (
-            <li
-              key={worker.id}
-              className="bg-white p-4 rounded shadow flex justify-between items-center"
-            >
-              <span>
-                <strong>{worker.id}</strong> – Shelf: {worker.shelfId}
-              </span>
-              <button
-                onClick={() => removeWorker(worker.id)}
-                className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-              >
-                Remove
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+    return (
+        <div className="p-6">
+            <h1 className="text-3xl font-bold mb-6">Manage Workers</h1>
+            <div className="space-y-4">
+                {assignments.map((a) => (
+                    <div key={a.id} className="bg-white p-4 rounded shadow">
+                        <p><strong>Employee:</strong> {a.employee_id}</p>
+                        <p><strong>Assigned Shelf:</strong> {a.shelf_id || "None"}</p>
+                        <div className="mt-2 space-x-2">
+                            <button onClick={() => handleUnassign(a.employee_id)} className="bg-red-500 px-3 py-1 text-white rounded">Unassign</button>
+                            <input type="text" placeholder="Shelf ID..." className="border p-1" onChange={(e) => setShelfId(e.target.value)} />
+                            <button onClick={() => handleAssign(a.employee_id)} className="bg-blue-500 px-3 py-1 text-white rounded">Assign</button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
 }
 
 export default ManageWorkers;

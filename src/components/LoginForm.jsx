@@ -1,206 +1,93 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
+import { authAPI } from "../services/api";
 
-const LoginForm = () => {
-  const [formData, setFormData] = useState({
-    username: '',
-    password: ''
-  });
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const { login } = useAuth();
+function LoginForm() {
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+  });
+  const [error, setError] = useState("");
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    if (error) setError('');
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setIsLoading(true);
+    setError("");
 
-    if (!formData.username || !formData.password) {
-      setError('Please fill in all fields');
-      setIsLoading(false);
+    const { username, password } = formData;
+    const result = await authAPI.login({ username, password });
+
+    if (!result.success) {
+      setError(result.error);
       return;
     }
 
-    try {
-      const { username, password } = formData;
-      const result = await login({ username, password });
+    const token = result.token;
+    const decoded = jwtDecode(token);
+    const role = decoded.role || "";
+    const employeeId = decoded.sub || "";
 
-      if (result.success) {
-        navigate('/dashboard');
-      } else {
-        setError(result.error || 'Login failed');
-      }
-    } catch (error) {
-      setError('Login failed. Please try again.');
-      console.error('Login error:', error);
-    } finally {
-      setIsLoading(false);
+    localStorage.setItem("accessToken", token);
+    localStorage.setItem("role", role === "store_manager" ? "store-manager" : role);
+    localStorage.setItem("employeeId", employeeId);
+
+    if (role === "store_manager") {
+      localStorage.setItem("storeId", "Store101"); // or fetch dynamically if needed
+      navigate("/manager/dashboard");
+    } else if (role === "staff") {
+      navigate("/staff/shelf");
+    } else {
+      setError("Invalid role");
     }
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.formContainer}>
-        <div style={styles.header}>
-          <h1 style={styles.title}>🛍️ ShelfCam</h1>
-          <p style={styles.subtitle}>AI-powered Retail Shelf Monitoring</p>
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white p-8 rounded shadow-md w-96"
+      >
+        <h2 className="text-2xl font-bold mb-6">ShelfCam Login</h2>
+        {error && <p className="text-red-500 mb-4">{error}</p>}
+        <div className="mb-4">
+          <label className="block mb-1 font-medium">Username</label>
+          <input
+            type="text"
+            name="username"
+            value={formData.username}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded px-3 py-2"
+            required
+          />
         </div>
-
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Username</label>
-            <input
-              type="text"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              style={styles.input}
-              placeholder="Enter your username"
-              required
-            />
-          </div>
-
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              style={styles.input}
-              placeholder="Enter your password"
-              required
-            />
-          </div>
-
-          {error && (
-            <div style={styles.error}>
-              ❌ {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            style={{
-              ...styles.button,
-              ...(isLoading ? styles.buttonDisabled : {})
-            }}
-          >
-            {isLoading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-
-        <div style={styles.footer}>
-          <p style={styles.footerText}>
-            Test with your backend credentials
-          </p>
+        <div className="mb-6">
+          <label className="block mb-1 font-medium">Password</label>
+          <input
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded px-3 py-2"
+            required
+          />
         </div>
-      </div>
+        <button
+          type="submit"
+          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
+        >
+          Login
+        </button>
+      </form>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f5f5f5',
-    padding: '20px'
-  },
-  formContainer: {
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    padding: '40px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    width: '100%',
-    maxWidth: '400px'
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: '30px'
-  },
-  title: {
-    color: '#333',
-    marginBottom: '8px',
-    fontSize: '28px'
-  },
-  subtitle: {
-    color: '#666',
-    margin: 0,
-    fontSize: '14px'
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px'
-  },
-  inputGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px'
-  },
-  label: {
-    fontSize: '14px',
-    fontWeight: '500',
-    color: '#333'
-  },
-  input: {
-    padding: '12px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    fontSize: '16px',
-    outline: 'none',
-    transition: 'border-color 0.3s'
-  },
-  button: {
-    padding: '12px',
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    fontSize: '16px',
-    fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s',
-    marginTop: '10px'
-  },
-  buttonDisabled: {
-    backgroundColor: '#ccc',
-    cursor: 'not-allowed'
-  },
-  error: {
-    color: '#dc3545',
-    fontSize: '14px',
-    padding: '10px',
-    backgroundColor: '#f8d7da',
-    border: '1px solid #f5c6cb',
-    borderRadius: '4px',
-    textAlign: 'center'
-  },
-  footer: {
-    textAlign: 'center',
-    marginTop: '30px'
-  },
-  footerText: {
-    color: '#666',
-    fontSize: '12px',
-    margin: 0
-  }
-};
+}
 
 export default LoginForm;

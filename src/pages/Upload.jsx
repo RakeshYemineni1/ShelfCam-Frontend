@@ -1,59 +1,34 @@
 import { useState } from "react";
 
-function Upload(){
-    const [preview, setPreview] = useState(null);
-    const [result, setResult] = useState(null);
+function Upload() {
+    const [file, setFile] = useState(null);
 
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
+    const handleUpload = async () => {
+        if (!file) return;
+        const formData = new FormData();
+        formData.append("file", file);
 
-        if (file) {
-            const imageUrl = URL.createObjectURL(file);
-            setPreview(imageUrl);
-
-            // simulating processing delay 
-            setTimeout(() => {
-                setResult({
-                    status:'processed',
-                    alerts: [
-                        'Empty spot detected in Shelf Row B',
-                        'Product XYZ missing in Section A2',
-                    ],
-                });
-            }, 2000);
+        try {
+            const token = localStorage.getItem("accessToken");
+            await fetch("http://localhost:8000/upload-inventory", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                body: formData,
+            });
+            alert("Upload successful!");
+        } catch (err) {
+            console.error(err);
+            alert("Upload failed.");
         }
     };
 
-    return(
-        <div>
-            <h1 className="text-2xl font-bold mb-6">ShelfCam Image Upload</h1>
-
-            <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="mb-6"/>
-
-            {preview && (
-                <div className="mb-6">
-                    <p className="text-sm text-gray-600 mb-2">Uploaded Image:</p>
-                    <img 
-                    src = {preview}
-                    alt="uploaded"
-                    className="w-full max-w-lg rounded shadow"/>
-                </div>
-            )}
-
-            {result && (
-                <div className="bg-white p-4 rounded shadow-md">
-                    <h2 className="font-semibold mb-2"> AI Detected Alerts:</h2>
-                    <ul className="list-disc pl-6 text-sm text-red-600 space-y-1">
-                        {result.alerts.map((alert, idx)=>{
-                            <li key={idx}>{alert}</li>
-                        })}
-                    </ul>
-                    </div>
-            )}
+    return (
+        <div className="p-6">
+            <h1 className="text-3xl font-bold mb-6">Upload Inventory CSV</h1>
+            <input type="file" accept=".csv" onChange={(e) => setFile(e.target.files[0])} />
+            <button onClick={handleUpload} className="mt-4 bg-blue-600 text-white px-4 py-2 rounded">Upload</button>
         </div>
     );
 }
